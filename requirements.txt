@@ -1,0 +1,4 @@
+Pillow==9.2.0
+prettytable==3.3.0
+python-dotenv==0.20.0
+wcwidth==0.2.5
