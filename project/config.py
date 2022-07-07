@@ -62,4 +62,5 @@ COMMANDS = (
     '-p', #path to file
     '-pdb', #path to database file
     '-st', # show database table
+    '-csv' # import CSV file
 )

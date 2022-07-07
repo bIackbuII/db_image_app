@@ -4,9 +4,9 @@ import exceptions
 
 import sys
 import os
+import csv
 
 import sqlite3
-# from sqlite3 import 
 import prettytable
 from PIL import Image
 
@@ -26,6 +26,23 @@ def convert_byte(bytes: int) -> str:
         conv_value = bytes / arg[1]
         if conv_value < 1024:
             return f'{round(conv_value,2)} {arg[0]}'
+
+def import_scv():
+        file_image_csv = os.path.join(BD_DIR, 'file_image_csv.csv')
+
+        conn = sqlite3.connect(os.path.join(BD_DIR, 'image_database.db'))
+        cur = conn.cursor()
+
+        try:
+                cur.execute("SELECT * FROM image;")
+        except sqlite3.OperationalError:
+                print('Database is empty!')
+
+        resultw = cur.fetchall()
+
+        with open(file_image_csv, 'w', encoding='utf-8') as f:
+                writer = csv.writer(f, lineterminator = '\n')
+                writer.writerows(resultw) 
 
 def showTable():
         conn = sqlite3.connect(os.path.join(BD_DIR, 'image_database.db'))
@@ -59,8 +76,11 @@ def main(WORK_DIR: str, BD_DIR: str) -> None:
         """)
         conn.commit()
 
+        LIST_OF_FILES = []
         try:
-                LIST_OF_FILES = os.listdir(WORK_DIR)
+                for root, dirs, files in os.walk(WORK_DIR):
+                        for name in files:
+                                LIST_OF_FILES.append(os.path.join(root, name))
         except FileNotFoundError:
                 print("Не верно задан путь!")
                 return
@@ -93,14 +113,18 @@ def main(WORK_DIR: str, BD_DIR: str) -> None:
                                 continue
 
                         if openedFile.filename in results:
-                                info_str = f'File {openedFile.filename} is already added.'
-                                # print(f"\033[32;55m{32}")
-                                print(info_str)
+                                print(f'File {openedFile.filename} is already added. Do you want to replace? (y/n)')
+                                ans = input()
+                                if ans == 'y':
+                                        cur.execute("UPDATE image SET filename=?, format=?, mode=?, size_px=?, size=?, palette=?, info=?;", file_record)
+                                elif ans == 'n':
+                                        pass
+                                else:
+                                        print('Enter \'y\' or \'n\'')
                         else:
                                 cur.execute("INSERT INTO image(filename, format, mode, size_px, size, palette, info) VALUES(?, ?, ?, ?, ?, ?, ?);", file_record)
                                 conn.commit()
-                                info_str = f'File {openedFile.filename} is added.'
-                                print(info_str)
+                                print(f'File {openedFile.filename} is added.')
 
 
 
@@ -112,7 +136,7 @@ if __name__ == '__main__':
                                         raise exceptions.BadRequest('Заданые параметры являются недопустимыми!')
         except exceptions.BadRequest as err:
                 print(err)
-        # print(len(sys.argv))
+
         WORK_DIR = os.getcwd()
         BD_DIR = os.getenv('BASIC_BD_URL')
 
@@ -122,6 +146,10 @@ if __name__ == '__main__':
                 if len(sys.argv) == 2:
                         if sys.argv[1] == '-st':
                                 showTable()
+                                quit()
+                        if sys.argv[1] == '-csv':
+                                import_scv()
+                                quit()
                 if len(sys.argv) == 3:
                         if sys.argv[1] == '-p':
                                 WORK_DIR = sys.argv[2]
@@ -132,4 +160,4 @@ if __name__ == '__main__':
                                 WORK_DIR = sys.argv[2]
                                 if sys.argv[3] == '-pdb':
                                         BD_DIR = sys.argv[4]
-        main(WORK_DIR, BD_DIR)
+                main(WORK_DIR, BD_DIR)
